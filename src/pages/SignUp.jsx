@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { AiFillEyeInvisible, AiFillEye } from "react-icons/ai"
 import { Link } from 'react-router-dom'
-import { getAuth, createUserWithEmailAndPassword,updateProfile } from "firebase/auth"
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
 import OAuth from '../components/OAuth'
 import { db } from "../firebase"
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
@@ -15,7 +15,7 @@ export default function SignUn() {
     password: ""
   })
   const { email, password, name } = formData
-  const navigate =useNavigate()
+  const navigate = useNavigate()
   function onChange(e) {
     setFromData((prevState) => ({
       ...prevState,
@@ -27,15 +27,15 @@ export default function SignUn() {
     try {
       const auth = getAuth()
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      updateProfile(auth.currentUser,{
-        displayName:name
+      updateProfile(auth.currentUser, {
+        displayName: name
       })
       const user = userCredential.user
-      const formDataCopy = {...formData}
+      const formDataCopy = { ...formData }
       delete formDataCopy.password
-      formDataCopy.timestamp= serverTimestamp()
-      await setDoc(doc(db,"users",user.uid),
-      formDataCopy)
+      formDataCopy.timestamp = serverTimestamp()
+      await setDoc(doc(db, "users", user.uid),
+        formDataCopy)
       // toast.success("Sign Up Was Successful")
       navigate("/");
     } catch (error) {
@@ -70,9 +70,9 @@ export default function SignUn() {
             <div className="my-4 before:border-t flex before:flex-1 items-center before:border-gray-300 after:border-t after:flex-1 after:border-gray-300">
               <p className='text-center font-semibold mx-4'>OR</p>
             </div>
-            <OAuth />
-          </form>
 
+          </form>
+          <OAuth />
         </div>
       </div>
     </section>
