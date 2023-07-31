@@ -1,6 +1,22 @@
-import React, { useState } from 'react'
+// Import required libraries and components
+import React, { useState } from 'react';
+import Spinner from '../components/Spinner';
+import { toast } from 'react-toastify';
+import { getStorage, ref, getDownloadURL, uploadBytesResumable } from "firebase/storage";
+import { getAuth } from "firebase/auth";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { v4 as uuidv4 } from 'uuid';
+import { db } from "../firebase";
+import { useNavigate } from 'react-router';
 
+// Create a functional component named CreateListing
 export default function CreateListing() {
+    // Initialize necessary state variables using the useState hook
+    const navigate = useNavigate();
+    const auth = getAuth();
+    // eslint-disable-next-line no-unused-vars
+    const [getLocationEnabled, setGetLocationEnabled] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [formData, setFromData] = useState({
         type: "rent",
         name: "",
@@ -13,15 +29,132 @@ export default function CreateListing() {
         offer: true,
         regularPrice: 0,
         discountedPrice: 0,
-    })
-    const { type, name, bedrooms, bathrooms, furnished, parking, address, description, offer, regularPrice, discountedPrice } = formData
-    function onchange() {
+        latitude: 0,
+        longitude: 0,
+        images: {}
+    });
+    // Destructure formData to access its properties directly
+    const { type, name, bedrooms, bathrooms, furnished, parking, address, description, offer, regularPrice, discountedPrice, latitude, longitude, images } = formData;
 
+    // Event handler to update form data on input change
+    function onchange(e) {
+        let boolean = null;
+        if (e.target.value === "true") {
+            boolean = true;
+        }
+        if (e.target.value === "false") {
+            boolean = false;
+        }
+        // Files
+        if (e.target.files) {
+            setFromData((prevState) => ({
+                ...prevState,
+                images: e.target.files,
+            }));
+        }
+        // Text/Boolean/Number
+        if (!e.target.files) {
+            setFromData((prevState) => ({
+                ...prevState,
+                [e.target.id]: boolean ?? e.target.value
+            }));
+        }
     }
+
+    // Event handler to submit the form and create a new listing
+    async function onsubmit(e) {
+        e.preventDefault();
+        setLoading(true);
+        // Validate discounted price
+        if (+discountedPrice >= +regularPrice) {
+            setLoading(false);
+            toast.error("Discounted price needs to be less than regular price");
+            return;
+        }
+        // Validate image count
+        if (images.length > 6) {
+            setLoading(false);
+            toast.error("Maximum 6 images are allowed");
+            return;
+        }
+
+        // Helper function to store each image to Firebase Storage
+        async function storeImage(image) {
+            return new Promise((resolve, reject) => {
+                const storage = getStorage();
+                const fileName = `${auth.currentUser.uid}-${image.name}-${uuidv4()}`;
+                const storageRef = ref(storage, fileName);
+                // Upload the file and metadata
+                const uploadTask = uploadBytesResumable(storageRef, image);
+                uploadTask.on('state_changed',
+                    (snapshot) => {
+                        // Observe state change events such as progress, pause, and resume
+                        // Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        console.log('Upload is ' + progress + '% done');
+                        // eslint-disable-next-line default-case
+                        switch (snapshot.state) {
+                            case 'paused':
+                                console.log('Upload is paused');
+                                break;
+                            case 'running':
+                                console.log('Upload is running');
+                                break;
+                        }
+                    },
+                    (error) => {
+                        // Handle unsuccessful uploads
+                        reject(error);
+                    },
+                    () => {
+                        // Handle successful uploads on complete
+                        // For instance, get the download URL: https://firebasestorage.googleapis.com/...
+                        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                            resolve(downloadURL);
+                        });
+                    }
+                );
+            });
+        }
+
+        // Store all images and get their download URLs
+        const imgUrls = await Promise.all(
+            [...images].map((image) => storeImage(image))
+        ).catch((error) => {
+            setLoading(false);
+            toast.error("Images not uploaded");
+            return;
+        });
+
+        // Prepare the data for Firestore document creation
+        const formDataCopy = {
+            ...formData,
+            imgUrls,
+            timestamp: serverTimestamp()
+        };
+        delete formDataCopy.images;
+        !formDataCopy.offer && delete formDataCopy.discountedPrice;
+        delete formDataCopy.latitude;
+        delete formDataCopy.longitude;
+
+        // Create a new listing document in Firestore
+        const docRef = await addDoc(collection(db, "listings"), formDataCopy);
+
+        setLoading(false);
+        toast.success("Listing created");
+        navigate(`/category/${formDataCopy.type}/${docRef.id}`);
+    }
+
+    // If loading is true, show a spinner component
+    if (loading) {
+        return <Spinner />;
+    }
+
+
     return (
         <main className='max-w-md mx-auto px-2'>
             <h1 className='text-3xl text-center mt-6 font-bold'> Create a Listing</h1>
-            <form>
+            <form onSubmit={onsubmit}>
                 <p className='text-lg mt-6 font-semibold'>Sell / Rent</p>
                 <div className="flex">
                     <button className={`px-7 mr-3 py-3 font-medium text-sm uppercase shadow-md rounded hover:shadow-lg
@@ -32,11 +165,11 @@ export default function CreateListing() {
                     <button className={`px-7 ml-3 py-3 font-medium text-sm uppercase shadow-md rounded hover:shadow-lg
                      focus:shadow-lg active:shadow-lg transition ease-in-out duration-150 w-full
                       ${type === "sale" ? "bg-white text-black" : "bg-slate-600 text-white"}`}
-                        type='button' id='type' value="sale" onClick={onchange}>Rent
+                        type='button' id='type' value="rent" onClick={onchange}>Rent
                     </button>
                 </div>
                 <p className='text-lg mt-6 font-semibold'>Name</p>
-                <input type="text" id='name' value={name} onchange={onchange} className='mb-6 px-4 py-2 text-gray-700 w-full text-xl bg-white border border-gray-300 rounded transition duration-150 ease-in-out focus:text-gray-700 focus:bg-white focus:border-slate-600' required placeholder='Name' maxLength="32" minLength="10" />
+                <input type="text" id='name' value={name} onChange={onchange} className='mb-6 px-4 py-2 text-gray-700 w-full text-xl bg-white border border-gray-300 rounded transition duration-150 ease-in-out focus:text-gray-700 focus:bg-white focus:border-slate-600' required placeholder='Name' maxLength="32" />
                 <div className="flex space-x-6 mb-6">
                     <div className="">
                         <p className='text-lg mt-6 font-semibold'>Beds</p>
@@ -74,9 +207,21 @@ export default function CreateListing() {
                     </button>
                 </div>
                 <p className='text-lg mt-6 font-semibold'>Address</p>
-                <textarea type="text" id='address' value={address} onchange={onchange} className='mb-6 px-4 py-2 text-gray-700 w-full text-xl bg-white border border-gray-300 rounded transition duration-150 ease-in-out focus:text-gray-700 focus:bg-white focus:border-slate-600' required placeholder='Address' />
+                <textarea type="text" id='address' value={address} onChange={onchange} className='mb-6 px-4 py-2 text-gray-700 w-full text-xl bg-white border border-gray-300 rounded transition duration-150 ease-in-out focus:text-gray-700 focus:bg-white focus:border-slate-600' required placeholder='Address' />
+                {!getLocationEnabled && (
+                    <div className="flex space-x-6 justify-start mb-6">
+                        <div className="">
+                            <p className='text-lg font-semibold'>Latitude</p>
+                            <input min="-90" max="90" className='w-full px-4 py-2 text-xl text-gray-700 bg-white border border-gray-300 rounded transition duration-150 ease-in-out focus:bg-white focus:text-gray-700 focus:border-slate-600 text-center' type="number" value={latitude} id="latitude" onChange={onchange} required />
+                        </div>
+                        <div className="">
+                            <p className='text-lg font-semibold'>Longitude</p>
+                            <input min="-180" max="180" className='w-full px-4 py-2 text-xl text-gray-700 bg-white border border-gray-300 rounded transition duration-150 ease-in-out focus:bg-white focus:text-gray-700 focus:border-slate-600 text-center' type="number" value={longitude} id="longitude" onChange={onchange} required />
+                        </div>
+                    </div>
+                )}
                 <p className='text-lg font-semibold'>Description</p>
-                <textarea type="text" id='description' value={description} onchange={onchange} className='mb-6 px-4 py-2 text-gray-700 w-full text-xl bg-white border border-gray-300 rounded transition duration-150 ease-in-out focus:text-gray-700 focus:bg-white focus:border-slate-600' required placeholder='Description' />
+                <textarea type="text" id='description' value={description} onChange={onchange} className='mb-6 px-4 py-2 text-gray-700 w-full text-xl bg-white border border-gray-300 rounded transition duration-150 ease-in-out focus:text-gray-700 focus:bg-white focus:border-slate-600' required placeholder='Description' />
                 <p className='text-lg font-semibold'>Offer</p>
                 <div className="flex mb-6">
                     <button className={`px-7 mr-3 py-3 font-medium text-sm uppercase shadow-md rounded hover:shadow-lg
