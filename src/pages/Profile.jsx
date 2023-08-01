@@ -7,6 +7,7 @@ import { db } from '../firebase';
 import { FcHome } from "react-icons/fc"
 import { Link } from 'react-router-dom';
 import ListingItem from '../components/ListingItem';
+
 export default function Profile() {
   // Get the authentication instance and the navigation hook
   const auth = getAuth();
@@ -62,23 +63,27 @@ export default function Profile() {
       toast.error("Could not update the profile detail");
     }
   }
+
   useEffect(() => {
     async function fetchUserListings() {
       try {
+        // Retrieve user listings from Firestore
         const listingRef = collection(db, "listings");
         const q = query(listingRef, where("userRef", "==", auth.currentUser.uid), orderBy("timestamp", "desc"));
         const querySnap = await getDocs(q);
         let listings = [];
         querySnap.forEach((doc) => {
+          // Store listing data into listings array
           return listings.push({
             id: doc.id,
             data: doc.data(),
           });
         });
+        // Set listings and loading state once the data is retrieved
         setListings(listings);
         setLoading(false);
       } catch (error) {
-        // Handle any potential errors here
+        // Handle any potential errors while fetching listings
         console.error("Error fetching user listings:", error);
       }
     }
@@ -88,6 +93,7 @@ export default function Profile() {
   // JSX rendering of the component
   return (
     <>
+      {/* User Profile Section */}
       <section className='max-w-6xl mx-auto flex justify-center items-center flex-col'>
         <h1 className='text-3xl text-center mt-6 font-bold'>My Profile</h1>
         <div className="w-full md:w-[50%] mt-6 px-3">
@@ -111,33 +117,47 @@ export default function Profile() {
               disabled
             />
             <div className="flex justify-between whitespace-nowrap mb-6 text-sm md:text-lg">
-              <p className='flex items-center mb-6'>Do you want to change your name? <span className='text-red-600 hover:text-red-700 transition ease-in-out cursor-pointer ml-1 duration-200'
-                onClick={() => {
-                  // If in edit mode, submit the changes and toggle edit mode
-                  changeDetail && onSubmit();
-                  setChangeDetail((prevstate) => !prevstate);
-                }}>
-                {changeDetail ? "Apply change" : "Edit"}
-              </span>
+              <p className='flex items-center mb-6'>
+                {/* Toggle Edit Mode */}
+                Do you want to change your name?{" "}
+                <span
+                  className='text-red-600 hover:text-red-700 transition ease-in-out cursor-pointer ml-1 duration-200'
+                  onClick={() => {
+                    // If in edit mode, submit the changes and toggle edit mode
+                    changeDetail && onSubmit();
+                    setChangeDetail((prevstate) => !prevstate);
+                  }}
+                >
+                  {changeDetail ? "Apply change" : "Edit"}
+                </span>
               </p>
               {/* Button to sign out */}
-              <p onClick={onLogout} className='text-blue-600 hover:text-blue-700 transition ease-in-out duration-200 cursor-pointer'>Sign Out</p>
+              <p onClick={onLogout} className='text-blue-600 hover:text-blue-700 transition ease-in-out duration-200 cursor-pointer'>
+                Sign Out
+              </p>
             </div>
           </form>
-          <button type='submit' className='transition ease-in-out duration-150 hover:shadow-lg rounded shadow-md hover:bg-blue-700 active:bg-blue-800 bg-blue-600 text-white w-full uppercase px-7 py-3 text-sm font-medium'>
+          {/* Button to create a new listing */}
+          <button
+            type='submit'
+            className='transition ease-in-out duration-150 hover:shadow-lg rounded shadow-md hover:bg-blue-700 active:bg-blue-800 bg-blue-600 text-white w-full uppercase px-7 py-3 text-sm font-medium'
+          >
             <Link to="/create-listing" className='flex justify-center items-center'>
               <FcHome className='mr-2 text-3xl p-1 rounded-full bg-red-200 border-2' /> Sell or rent your home
             </Link>
           </button>
         </div>
       </section>
+
+      {/* Display User Listings */}
       <div className="max-w-6xl px-3 mt-6 mx-auto">
         {!loading && listings.length > 0 && (
           <>
-            <h2 className='text-2xl text-center font-semibold'>My Listings</h2>
-            <ul>
-              {listings.map((listing)=>(
-                <ListingItem  key={listing.id} id={listing.id} listing={listing.data}/>
+            <h2 className='text-2xl text-center font-semibold mb-6'>My Listings</h2>
+            <ul className='sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl-grid-cols-5 mt-6 mb-6'>
+              {/* Render each listing using ListingItem component */}
+              {listings.map((listing) => (
+                <ListingItem key={listing.id} id={listing.id} listing={listing.data} />
               ))}
             </ul>
           </>
