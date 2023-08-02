@@ -9,7 +9,7 @@ import Spinner from '../components/Spinner';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { FaShare, FaMapMarkerAlt, FaBed, FaBath, FaParking, FaChair } from "react-icons/fa";
 import SwiperCore from 'swiper';
-import { EffectFade, Navigation, Pagination, Scrollbar, Autoplay } from 'swiper/modules';
+import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import 'swiper/css'; // Import the base styles for Swiper
 import { getAuth } from 'firebase/auth';
 import Contact from '../components/Contact';

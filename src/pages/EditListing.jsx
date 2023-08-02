@@ -4,7 +4,7 @@ import Spinner from '../components/Spinner';
 import { toast } from 'react-toastify';
 import { getStorage, ref, getDownloadURL, uploadBytesResumable } from "firebase/storage";
 import { getAuth } from "firebase/auth";
-import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { v4 as uuidv4 } from 'uuid';
 import { db } from "../firebase";
 import { useNavigate, useParams } from 'react-router';
