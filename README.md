@@ -1,6 +1,6 @@
 # Realtor React Clone
 
-![Project Screenshot](/favicon.ico)
+[Project Screenshot](https://ibb.co/1dSRFhJ)
 
 ## About
 
